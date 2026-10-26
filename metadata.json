@@ -1,0 +1,6 @@
+{
+  "name": "Retail Store Sales Analytics Dashboard",
+  "description": "Sales & Revenue Dashboard: Sales performance overview and key business insights using verified data from subai(1).xlsx.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
