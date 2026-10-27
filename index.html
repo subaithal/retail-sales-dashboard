@@ -43,6 +43,14 @@
             <span class="pulse-indicator"></span>
             <span id="header-live-badge">10 Orders &bull; ₹228,500</span>
           </div>
+          <a href="./retail-sales-dashboard.zip" download="retail-sales-dashboard.zip" class="btn-header-action" id="download-zip-btn" title="Download complete project ZIP">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Download ZIP</span>
+          </a>
           <button class="btn-header-action" id="open-data-modal-btn" title="Open live dataset editor">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 20h9"></path>
@@ -106,14 +114,14 @@
 
       <!-- Row 2: Main Grid Visualizations (100% Fit in remaining screen height) -->
       <main class="main-grid">
-        <!-- Left Column: Revenue Line Chart & Product Sales Bar Chart -->
+        <!-- Left Column: Revenue Line Chart & Monthly Sales Chart -->
         <div class="grid-col-left">
-          <!-- Revenue Line Chart -->
+          <!-- 1. Revenue Trend Line Chart -->
           <div class="dashboard-card">
             <div class="card-header-line">
               <div class="card-title-wrap">
-                <h3>Revenue Growth & Daily Sales</h3>
-                <p>Cumulative trajectory & order amounts across February 2024</p>
+                <h3>Revenue Trend</h3>
+                <p>Cumulative trajectory across February 2024</p>
               </div>
               <span class="card-tag" id="line-chart-tag">Total: ₹228.5k</span>
             </div>
@@ -122,26 +130,40 @@
             </div>
           </div>
 
-          <!-- Product Sales Bar Chart -->
+          <!-- 2. Monthly Sales Chart -->
           <div class="dashboard-card">
             <div class="card-header-line">
               <div class="card-title-wrap">
-                <h3>Monthly Sales & Product Performance</h3>
-                <p>Gross revenue breakdown across store products</p>
+                <h3>Monthly Sales Chart</h3>
+                <p>Daily order transactions timeline</p>
               </div>
-              <span class="card-tag" id="bar-chart-top-tag">Top: Laptop</span>
+              <span class="card-tag">Feb 2024</span>
             </div>
             <div class="chart-fit-container">
-              <canvas id="productBarChart"></canvas>
+              <canvas id="monthlySalesChart"></canvas>
             </div>
           </div>
         </div>
 
-        <!-- Right Column: 2x2 Sub-Grid (Donut, KPI Gauge, Key Metrics, Top Regions) -->
+        <!-- Right Column: Product Performance, Category Doughnut, Key Metrics, Regional Revenue Chart -->
         <div class="grid-col-right">
-          <!-- Top Sub-Row: Donut Chart & Sales KPI Gauge -->
+          <!-- Top Sub-Row: Product Bar & Category Doughnut -->
           <div class="sub-grid-top-row">
-            <!-- Donut Chart: Category Share -->
+            <!-- 3. Product Performance Bar Chart -->
+            <div class="dashboard-card">
+              <div class="card-header-line">
+                <div class="card-title-wrap">
+                  <h3>Product Performance</h3>
+                  <p>Revenue by item</p>
+                </div>
+                <span class="card-tag" id="bar-chart-top-tag">Top: Laptop</span>
+              </div>
+              <div class="chart-fit-container">
+                <canvas id="productBarChart"></canvas>
+              </div>
+            </div>
+
+            <!-- 4. Category Share Doughnut Chart -->
             <div class="dashboard-card">
               <div class="card-header-line">
                 <div class="card-title-wrap">
@@ -158,33 +180,9 @@
                 </div>
               </div>
             </div>
-
-            <!-- Sales KPI Target Gauge -->
-            <div class="dashboard-card">
-              <div class="card-header-line">
-                <div class="card-title-wrap">
-                  <h3>Sales KPI Target</h3>
-                  <p>Goal quota</p>
-                </div>
-                <span class="card-tag">Goal Met</span>
-              </div>
-              <div class="gauge-content-box">
-                <div class="gauge-canvas-wrap">
-                  <canvas id="kpiGaugeChart"></canvas>
-                  <div class="gauge-center-stat">
-                    <div class="gauge-pct" id="gauge-pct-display">114.2%</div>
-                    <div class="gauge-lbl">Target Achieved</div>
-                  </div>
-                </div>
-                <div class="gauge-footer-stats">
-                  <span>Actual: <strong id="gauge-actual-stat">₹228.5k</strong></span>
-                  <span>Target: <strong id="gauge-target-stat">₹200.0k</strong></span>
-                </div>
-              </div>
-            </div>
           </div>
 
-          <!-- Bottom Sub-Row: Key Metrics & Top Regions -->
+          <!-- Bottom Sub-Row: Key Metrics & Regional Revenue Chart -->
           <div class="sub-grid-bottom-row">
             <!-- Key Metrics -->
             <div class="dashboard-card">
@@ -200,17 +198,17 @@
               </div>
             </div>
 
-            <!-- Top Regions Revenue -->
+            <!-- 5. Regional Revenue Chart -->
             <div class="dashboard-card">
               <div class="card-header-line">
                 <div class="card-title-wrap">
-                  <h3>Top Regions Revenue</h3>
-                  <p>Regional sales distribution</p>
+                  <h3>Regional Revenue</h3>
+                  <p>City & regional shares</p>
                 </div>
-                <span class="card-tag" id="regions-count-tag">7 Regions</span>
+                <span class="card-tag">Top Cities</span>
               </div>
-              <div class="regions-table-list" id="top-regions-container">
-                <!-- Populated dynamically -->
+              <div class="chart-fit-container">
+                <canvas id="regionalRevenueChart"></canvas>
               </div>
             </div>
           </div>
@@ -233,7 +231,7 @@
                 10 Records &bull; Total: ₹228,500
               </span>
             </h3>
-            <p>Modify quantities, prices, or add/delete orders below — all charts, KPIs, gauges, and metrics update immediately in real-time!</p>
+            <p>Modify quantities, prices, or add/delete orders below — all charts, KPIs, and metrics update immediately in real-time!</p>
           </div>
           <div class="modal-actions">
             <button class="btn-action btn-add" id="add-record-btn" title="Add a new sales order">
@@ -276,8 +274,13 @@
       </div>
     </div>
 
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Chart.js with local bundle and CDN fallback for guaranteed Vercel production reliability -->
+    <script src="./chart.umd.js"></script>
+    <script>
+      if (typeof Chart === 'undefined') {
+        document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>');
+      }
+    </script>
 
     <!-- Embedded Data & Reactive Dashboard Logic -->
     <script src="./data.js"></script>

@@ -1,22 +1,23 @@
 /**
- * Sales & Revenue Dashboard — Fully Data-Driven & Reactive Engine
- * Single Shared Dataset drives all KPIs, Charts, Gauges, Key Metrics, and Regions.
- * Any Add, Edit, or Delete immediately recalculates everything in real-time.
+ * Sales & Revenue Dashboard — Core Reactive Application Logic
+ * Single shared dataset drives all 5 charts, KPI cards, and key metrics.
+ * Add, edit, or delete operations update all components in real-time.
  */
 
 (function () {
   'use strict';
 
-  // Shared Reactive Dataset (persisted in localStorage or initialized from DEFAULT_SALES_RECORDS)
+  // Shared Reactive Dataset
   let salesDataset = [];
 
-  // Chart Instances
+  // Chart.js Instances
   let revenueLineChart = null;
-  let categoryDonutChart = null;
+  let monthlySalesChart = null;
   let productBarChart = null;
-  let kpiGaugeChart = null;
+  let categoryDonutChart = null;
+  let regionalRevenueChart = null;
 
-  // Distinct Category Color Palette (Dynamically assigned)
+  // Category Color Palette
   const CATEGORY_COLORS = {
     Electronics: '#d946ef', // Magenta
     Accessories: '#8b5cf6', // Purple
@@ -45,7 +46,7 @@
    * Compact Currency Formatter (e.g. ₹228.5k)
    */
   function formatCompactINR(amount) {
-    if (isNaN(amount)) return '₹0';
+    if (isNaN(amount) || amount === null) return '₹0';
     if (amount >= 10000000) return '₹' + (amount / 10000000).toFixed(2) + 'Cr';
     if (amount >= 100000) return '₹' + (amount / 1000).toFixed(1) + 'k';
     if (amount >= 1000) return '₹' + (amount / 1000).toFixed(1) + 'k';
@@ -53,10 +54,10 @@
   }
 
   /**
-   * Load Shared Dataset
+   * Load Dataset from localStorage or default source
    */
   function loadDataset() {
-    const saved = localStorage.getItem('active_sales_dataset_v2');
+    const saved = localStorage.getItem('retail_sales_active_data_v3');
     if (saved) {
       try {
         salesDataset = JSON.parse(saved);
@@ -64,13 +65,13 @@
         console.error('Failed to parse saved dataset, reverting to default:', e);
         salesDataset = JSON.parse(JSON.stringify(window.DEFAULT_SALES_RECORDS || []));
       }
-    } else if (window.DEFAULT_SALES_RECORDS) {
+    } else if (window.DEFAULT_SALES_RECORDS && window.DEFAULT_SALES_RECORDS.length > 0) {
       salesDataset = JSON.parse(JSON.stringify(window.DEFAULT_SALES_RECORDS));
     } else {
       salesDataset = [];
     }
 
-    // Ensure all records have computed revenue and unique ids
+    // Ensure all records have computed revenue, quantities, and unique ids
     salesDataset.forEach((row, index) => {
       if (!row.id) row.id = 'rec_' + (index + 1) + '_' + Date.now();
       row.quantity = Number(row.quantity) || 1;
@@ -80,11 +81,11 @@
   }
 
   /**
-   * Save Active Dataset to Local Storage
+   * Save Active Dataset
    */
   function saveDataset() {
     try {
-      localStorage.setItem('active_sales_dataset_v2', JSON.stringify(salesDataset));
+      localStorage.setItem('retail_sales_active_data_v3', JSON.stringify(salesDataset));
     } catch (e) {
       console.warn('Could not save to localStorage:', e);
     }
@@ -99,13 +100,9 @@
     let totalUnits = 0;
     const revenues = [];
 
-    // Category aggregation map
     const categoryMap = {};
-    // Product aggregation map
     const productMap = {};
-    // Date aggregation map
     const dateMap = {};
-    // Region aggregation map
     const regionMap = {};
 
     salesDataset.forEach((item) => {
@@ -182,9 +179,7 @@
     }
     const maxOrderRevenue = revenues.length > 0 ? revenues[revenues.length - 1] : 0;
 
-    // Top Volume product
     const topVolumeProduct = Object.values(productMap).sort((a, b) => b.units - a.units)[0] || { name: 'None', units: 0 };
-    // Top Revenue Category
     const topCategory = categories[0] || { name: 'None', share: 0 };
 
     return {
@@ -206,7 +201,7 @@
   }
 
   /**
-   * Update All KPI Cards Dynamically
+   * Update All 4 KPI Cards Dynamically
    */
   function updateKPICards(analytics) {
     const revEl = document.getElementById('kpi-val-revenue');
@@ -219,7 +214,6 @@
     if (unitsEl) unitsEl.textContent = analytics.totalUnits.toLocaleString('en-IN');
     if (aovEl) aovEl.textContent = formatINR(analytics.averageOrderValue);
 
-    // Subtext pills
     const targetBadge = document.getElementById('kpi-target-badge');
     if (targetBadge) {
       targetBadge.textContent = `↑ ${analytics.targetAchievementRate}%`;
@@ -243,20 +237,18 @@
   }
 
   /**
-   * Update Revenue Line Chart Dynamically
+   * 1. Revenue Trend Line Chart
    */
   function updateRevenueLineChart(analytics) {
     const canvas = document.getElementById('revenueLineChart');
-    if (!canvas) return;
+    if (!canvas || typeof Chart === 'undefined') return;
     const ctx = canvas.getContext('2d');
 
     const labels = analytics.timeline.map((t) => t.label);
     const cumulativeData = analytics.timeline.map((t) => t.cumulativeRevenue);
-    const dailyData = analytics.timeline.map((t) => t.dailyRevenue);
 
-    // Gradient styling
     const fillGradient = ctx.createLinearGradient(0, 0, 0, 220);
-    fillGradient.addColorStop(0, 'rgba(217, 70, 239, 0.35)');
+    fillGradient.addColorStop(0, 'rgba(217, 70, 239, 0.38)');
     fillGradient.addColorStop(0.5, 'rgba(244, 63, 94, 0.15)');
     fillGradient.addColorStop(1, 'rgba(139, 92, 246, 0.0)');
 
@@ -275,26 +267,15 @@
               label: 'Cumulative Revenue',
               data: cumulativeData,
               borderColor: lineGradient,
-              borderWidth: 3,
+              borderWidth: 2.5,
               backgroundColor: fillGradient,
               fill: true,
               tension: 0.38,
               pointBackgroundColor: '#f43f5e',
               pointBorderColor: '#ffffff',
-              pointBorderWidth: 2,
-              pointRadius: 4,
-              pointHoverRadius: 7,
-              yAxisID: 'y'
-            },
-            {
-              type: 'bar',
-              label: 'Daily Order Amount',
-              data: dailyData,
-              backgroundColor: 'rgba(139, 92, 246, 0.28)',
-              hoverBackgroundColor: 'rgba(217, 70, 239, 0.6)',
-              borderRadius: 4,
-              barThickness: 12,
-              yAxisID: 'yDaily'
+              pointBorderWidth: 1.5,
+              pointRadius: 3.5,
+              pointHoverRadius: 6
             }
           ]
         },
@@ -302,41 +283,26 @@
           responsive: true,
           maintainAspectRatio: false,
           animation: { duration: 300 },
-          interaction: { mode: 'index', intersect: false },
           plugins: {
-            legend: {
-              display: true,
-              position: 'top',
-              align: 'end',
-              labels: { boxWidth: 10, boxHeight: 10, color: '#cbd5e1', font: { size: 10 } }
-            },
+            legend: { display: false },
             tooltip: {
               callbacks: {
-                label: (ctx) => {
-                  if (ctx.dataset.label.includes('Cumulative')) return ` Cumulative: ${formatINR(ctx.raw)}`;
-                  return ` Day Total: ${formatINR(ctx.raw)}`;
-                }
+                label: (ctx) => ` Cumulative: ${formatINR(ctx.raw)}`
               }
             }
           },
           scales: {
             x: {
               grid: { display: false },
-              ticks: { color: '#94a3b8', font: { size: 10 } }
+              ticks: { color: '#94a3b8', font: { size: 9.5 } }
             },
             y: {
-              position: 'left',
               grid: { color: 'rgba(255, 255, 255, 0.05)' },
               ticks: {
                 color: '#cbd5e1',
-                font: { size: 10 },
+                font: { size: 9.5 },
                 callback: (v) => formatCompactINR(v)
               }
-            },
-            yDaily: {
-              position: 'right',
-              grid: { display: false },
-              ticks: { display: false }
             }
           }
         }
@@ -344,7 +310,6 @@
     } else {
       revenueLineChart.data.labels = labels;
       revenueLineChart.data.datasets[0].data = cumulativeData;
-      revenueLineChart.data.datasets[1].data = dailyData;
       revenueLineChart.update();
     }
 
@@ -353,11 +318,151 @@
   }
 
   /**
-   * Update Category Donut Chart Dynamically
+   * 2. Monthly Sales Chart (Sales by Date Timeline)
+   */
+  function updateMonthlySalesChart(analytics) {
+    const canvas = document.getElementById('monthlySalesChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+    const ctx = canvas.getContext('2d');
+
+    const labels = analytics.timeline.map((t) => t.label);
+    const dailyData = analytics.timeline.map((t) => t.dailyRevenue);
+
+    const barGradient = ctx.createLinearGradient(0, 0, 0, 180);
+    barGradient.addColorStop(0, '#06b6d4'); // Cyan
+    barGradient.addColorStop(0.6, '#8b5cf6'); // Purple
+    barGradient.addColorStop(1, '#4f46e5'); // Indigo
+
+    if (!monthlySalesChart) {
+      monthlySalesChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Daily Sales',
+              data: dailyData,
+              backgroundColor: barGradient,
+              hoverBackgroundColor: '#22d3ee',
+              borderRadius: 4,
+              borderSkipped: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 300 },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` Sales: ${formatINR(ctx.raw)}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#94a3b8', font: { size: 9.5 } }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: {
+                color: '#cbd5e1',
+                font: { size: 9.5 },
+                callback: (v) => formatCompactINR(v)
+              }
+            }
+          }
+        }
+      });
+    } else {
+      monthlySalesChart.data.labels = labels;
+      monthlySalesChart.data.datasets[0].data = dailyData;
+      monthlySalesChart.update();
+    }
+  }
+
+  /**
+   * 3. Product Performance Bar Chart
+   */
+  function updateProductBarChart(analytics) {
+    const canvas = document.getElementById('productBarChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+    const ctx = canvas.getContext('2d');
+
+    const labels = analytics.products.map((p) => p.name);
+    const revenues = analytics.products.map((p) => p.revenue);
+
+    const barGradient = ctx.createLinearGradient(0, 0, 0, 160);
+    barGradient.addColorStop(0, '#ec4899');
+    barGradient.addColorStop(0.5, '#d946ef');
+    barGradient.addColorStop(1, '#6366f1');
+
+    if (!productBarChart) {
+      productBarChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Product Sales',
+              data: revenues,
+              backgroundColor: barGradient,
+              hoverBackgroundColor: '#f43f5e',
+              borderRadius: 5,
+              borderSkipped: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 300 },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (context) => ` Total: ${formatINR(context.raw)}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#cbd5e1', font: { size: 8.5 } }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: {
+                color: '#94a3b8',
+                font: { size: 8.5 },
+                callback: (v) => formatCompactINR(v)
+              }
+            }
+          }
+        }
+      });
+    } else {
+      productBarChart.data.labels = labels;
+      productBarChart.data.datasets[0].data = revenues;
+      productBarChart.update();
+    }
+
+    const topProd = analytics.products[0];
+    const topProdTag = document.getElementById('bar-chart-top-tag');
+    if (topProdTag) {
+      topProdTag.textContent = topProd ? `Top: ${topProd.name} (${formatCompactINR(topProd.revenue)})` : 'No items';
+    }
+  }
+
+  /**
+   * 4. Category Share Doughnut Chart
    */
   function updateCategoryDonutChart(analytics) {
     const canvas = document.getElementById('categoryDonutChart');
-    if (!canvas) return;
+    if (!canvas || typeof Chart === 'undefined') return;
     const ctx = canvas.getContext('2d');
 
     const labels = analytics.categories.map((c) => c.name);
@@ -373,9 +478,9 @@
             {
               data: revenues,
               backgroundColor: colors,
-              borderColor: '#0a0a16',
-              borderWidth: 3,
-              hoverOffset: 6
+              borderColor: '#070614',
+              borderWidth: 2,
+              hoverOffset: 5
             }
           ]
         },
@@ -383,7 +488,7 @@
           responsive: true,
           maintainAspectRatio: false,
           animation: { duration: 300 },
-          cutout: '74%',
+          cutout: '72%',
           plugins: {
             legend: { display: false },
             tooltip: {
@@ -406,11 +511,10 @@
       categoryDonutChart.update();
     }
 
-    // Dynamic Donut Legend List
     const legendEl = document.getElementById('donut-legend-items');
     if (legendEl) {
       if (analytics.categories.length === 0) {
-        legendEl.innerHTML = '<span style="font-size:0.75rem; color:var(--text-dim);">No categories</span>';
+        legendEl.innerHTML = '<span style="font-size:0.65rem; color:var(--text-dim);">No categories</span>';
       } else {
         legendEl.innerHTML = analytics.categories
           .map((cat) => `
@@ -428,38 +532,41 @@
   }
 
   /**
-   * Update Monthly / Product Sales Bar Chart Dynamically
+   * 5. Regional Revenue Chart (Horizontal Bar Chart)
    */
-  function updateProductBarChart(analytics) {
-    const canvas = document.getElementById('productBarChart');
-    if (!canvas) return;
+  function updateRegionalRevenueChart(analytics) {
+    const canvas = document.getElementById('regionalRevenueChart');
+    if (!canvas || typeof Chart === 'undefined') return;
     const ctx = canvas.getContext('2d');
 
-    const labels = analytics.products.map((p) => p.name);
-    const revenues = analytics.products.map((p) => p.revenue);
+    const regions = analytics.topRegions.slice(0, 6);
+    const labels = regions.map((r) => r.region.split('(')[0].trim());
+    const revenues = regions.map((r) => r.revenue);
 
-    const barGradient = ctx.createLinearGradient(0, 0, 0, 180);
-    barGradient.addColorStop(0, '#ec4899');
-    barGradient.addColorStop(0.5, '#d946ef');
-    barGradient.addColorStop(1, '#6366f1');
+    const barGradient = ctx.createLinearGradient(0, 0, 200, 0);
+    barGradient.addColorStop(0, '#8b5cf6');
+    barGradient.addColorStop(0.6, '#ec4899');
+    barGradient.addColorStop(1, '#f97316');
 
-    if (!productBarChart) {
-      productBarChart = new Chart(ctx, {
+    if (!regionalRevenueChart) {
+      regionalRevenueChart = new Chart(ctx, {
         type: 'bar',
         data: {
           labels: labels,
           datasets: [
             {
-              label: 'Sales Revenue (₹)',
+              axis: 'y',
+              label: 'Revenue',
               data: revenues,
               backgroundColor: barGradient,
-              hoverBackgroundColor: '#f43f5e',
-              borderRadius: 6,
+              hoverBackgroundColor: '#fb923c',
+              borderRadius: 4,
               borderSkipped: false
             }
           ]
         },
         options: {
+          indexAxis: 'y',
           responsive: true,
           maintainAspectRatio: false,
           animation: { duration: 300 },
@@ -467,94 +574,31 @@
             legend: { display: false },
             tooltip: {
               callbacks: {
-                label: (context) => ` Total Sales: ${formatINR(context.raw)}`
+                label: (context) => ` Revenue: ${formatINR(context.raw)}`
               }
             }
           },
           scales: {
             x: {
-              grid: { display: false },
-              ticks: { color: '#cbd5e1', font: { size: 9.5 } }
-            },
-            y: {
               grid: { color: 'rgba(255, 255, 255, 0.05)' },
               ticks: {
                 color: '#94a3b8',
-                font: { size: 9.5 },
+                font: { size: 8 },
                 callback: (v) => formatCompactINR(v)
               }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { color: '#cbd5e1', font: { size: 8 } }
             }
           }
         }
       });
     } else {
-      productBarChart.data.labels = labels;
-      productBarChart.data.datasets[0].data = revenues;
-      productBarChart.update();
+      regionalRevenueChart.data.labels = labels;
+      regionalRevenueChart.data.datasets[0].data = revenues;
+      regionalRevenueChart.update();
     }
-
-    const topProd = analytics.products[0];
-    const topProdTag = document.getElementById('bar-chart-top-tag');
-    if (topProdTag) {
-      topProdTag.textContent = topProd ? `Top: ${topProd.name} (${formatCompactINR(topProd.revenue)})` : 'No items';
-    }
-  }
-
-  /**
-   * Update Sales KPI Target Gauge Dynamically
-   */
-  function updateKpiGaugeChart(analytics) {
-    const canvas = document.getElementById('kpiGaugeChart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-
-    const rate = Math.min(Number(analytics.targetAchievementRate) || 0, 100);
-    const remainder = Math.max(100 - rate, 0);
-
-    const gaugeGradient = ctx.createLinearGradient(0, 0, 180, 0);
-    gaugeGradient.addColorStop(0, '#8b5cf6');
-    gaugeGradient.addColorStop(0.6, '#ec4899');
-    gaugeGradient.addColorStop(1, '#f97316');
-
-    if (!kpiGaugeChart) {
-      kpiGaugeChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          datasets: [
-            {
-              data: [rate, remainder],
-              backgroundColor: [gaugeGradient, 'rgba(255, 255, 255, 0.08)'],
-              borderWidth: 0,
-              circumference: 180,
-              rotation: 270
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: { duration: 300 },
-          cutout: '80%',
-          plugins: {
-            legend: { display: false },
-            tooltip: { enabled: false }
-          }
-        }
-      });
-    } else {
-      kpiGaugeChart.data.datasets[0].data = [rate, remainder];
-      kpiGaugeChart.update();
-    }
-
-    // Update gauge text elements
-    const gaugePctEl = document.getElementById('gauge-pct-display');
-    if (gaugePctEl) gaugePctEl.textContent = `${analytics.targetAchievementRate}%`;
-
-    const gaugeActualEl = document.getElementById('gauge-actual-stat');
-    if (gaugeActualEl) gaugeActualEl.textContent = formatCompactINR(analytics.totalRevenue);
-
-    const gaugeTargetEl = document.getElementById('gauge-target-stat');
-    if (gaugeTargetEl) gaugeTargetEl.textContent = formatCompactINR(analytics.targetRevenue);
   }
 
   /**
@@ -579,7 +623,7 @@
       },
       {
         label: 'Top Volume Driver',
-        value: `${analytics.topVolumeProduct.name} (${analytics.topVolumeProduct.units} units)`,
+        value: `${analytics.topVolumeProduct.name} (${analytics.topVolumeProduct.units}u)`,
         progress: Math.min(analytics.totalUnits > 0 ? (analytics.topVolumeProduct.units / analytics.totalUnits) * 100 : 0, 100),
         color: 'orange'
       },
@@ -597,7 +641,7 @@
       },
       {
         label: 'Avg Basket Size',
-        value: analytics.totalOrders > 0 ? `${(analytics.totalUnits / analytics.totalOrders).toFixed(1)} units/order` : '0 units',
+        value: analytics.totalOrders > 0 ? `${(analytics.totalUnits / analytics.totalOrders).toFixed(1)} u/ord` : '0 u',
         progress: 75,
         color: 'cyan'
       }
@@ -619,40 +663,7 @@
   }
 
   /**
-   * Update Top Regions Revenue Dynamically
-   */
-  function updateTopRegions(analytics) {
-    const container = document.getElementById('top-regions-container');
-    if (!container) return;
-
-    if (analytics.topRegions.length === 0) {
-      container.innerHTML = '<div style="text-align:center; padding:16px; color:var(--text-dim); font-size:0.75rem;">No regions recorded</div>';
-      return;
-    }
-
-    container.innerHTML = analytics.topRegions
-      .slice(0, 7)
-      .map((r) => `
-        <div class="region-item">
-          <span class="region-name" title="${r.region}">${r.region}</span>
-          <div class="region-bar-wrap">
-            <div class="region-mini-track">
-              <div class="region-mini-fill" style="width: ${r.share}%;"></div>
-            </div>
-            <span class="region-pct">${r.share}%</span>
-          </div>
-          <span class="region-revenue">${formatINR(r.revenue)}</span>
-        </div>
-      `)
-      .join('');
-
-    const countTag = document.getElementById('regions-count-tag');
-    if (countTag) countTag.textContent = `${analytics.topRegions.length} Regions`;
-  }
-
-  /**
    * Master Recalculate & Re-render Function
-   * Triggered on any dataset change (add, edit, delete, reset)
    */
   function recalculateAndRenderAll() {
     saveDataset();
@@ -660,11 +671,11 @@
 
     updateKPICards(analytics);
     updateRevenueLineChart(analytics);
-    updateCategoryDonutChart(analytics);
+    updateMonthlySalesChart(analytics);
     updateProductBarChart(analytics);
-    updateKpiGaugeChart(analytics);
+    updateCategoryDonutChart(analytics);
+    updateRegionalRevenueChart(analytics);
     updateKeyMetrics(analytics);
-    updateTopRegions(analytics);
     renderEditableTable();
   }
 
@@ -684,7 +695,7 @@
     if (salesDataset.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="8" style="text-align:center; padding: 24px; color: var(--text-dim); font-size: 0.8rem;">
+          <td colspan="9" style="text-align:center; padding: 24px; color: var(--text-dim); font-size: 0.8rem;">
             No sales records. Click "＋ Add Record" below to insert an order!
           </td>
         </tr>
@@ -693,33 +704,33 @@
     }
 
     tbody.innerHTML = salesDataset
-      .map((row, idx) => `
+      .map((row) => `
         <tr data-id="${row.id}" class="editable-row">
-          <td style="width: 110px;">
+          <td style="width: 100px;">
             <input type="text" class="table-cell-input order-id-input" value="${row.orderId || ''}" data-field="orderId" placeholder="ORD-1001" />
           </td>
-          <td style="width: 125px;">
+          <td style="width: 120px;">
             <input type="date" class="table-cell-input" value="${row.date || ''}" data-field="date" />
           </td>
           <td>
             <input type="text" class="table-cell-input" value="${row.product || ''}" data-field="product" placeholder="Product name" />
           </td>
-          <td style="width: 120px;">
+          <td style="width: 110px;">
             <input type="text" class="table-cell-input" value="${row.category || ''}" data-field="category" placeholder="Category" />
           </td>
-          <td style="width: 70px;">
+          <td style="width: 65px;">
             <input type="number" min="1" step="1" class="table-cell-input text-center qty-input" value="${row.quantity}" data-field="quantity" />
           </td>
-          <td style="width: 105px;">
+          <td style="width: 95px;">
             <input type="number" min="0" step="50" class="table-cell-input price-input" value="${row.unitPrice}" data-field="unitPrice" />
           </td>
-          <td style="width: 115px; text-align: right; font-weight: 700; color: #fff;" class="row-revenue-cell">
+          <td style="width: 110px; text-align: right; font-weight: 700; color: #fff;" class="row-revenue-cell">
             ${formatINR(row.revenue)}
           </td>
           <td>
             <input type="text" class="table-cell-input" value="${row.region || row.city || ''}" data-field="region" placeholder="City / Region" />
           </td>
-          <td style="width: 44px; text-align: center;">
+          <td style="width: 40px; text-align: center;">
             <button class="delete-row-btn" data-id="${row.id}" title="Delete this record" aria-label="Delete">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -761,20 +772,20 @@
     // Auto-recalculate revenue for this record
     record.revenue = record.quantity * record.unitPrice;
 
-    // Update row revenue text
+    // Update row revenue cell text immediately
     const revCell = rowEl.querySelector('.row-revenue-cell');
     if (revCell) revCell.textContent = formatINR(record.revenue);
 
-    // Save and immediately recalculate all charts, KPIs, gauges, and insights
+    // Save and immediately recalculate all charts, KPIs, and metrics
     saveDataset();
     const analytics = computeAnalytics();
     updateKPICards(analytics);
     updateRevenueLineChart(analytics);
-    updateCategoryDonutChart(analytics);
+    updateMonthlySalesChart(analytics);
     updateProductBarChart(analytics);
-    updateKpiGaugeChart(analytics);
+    updateCategoryDonutChart(analytics);
+    updateRegionalRevenueChart(analytics);
     updateKeyMetrics(analytics);
-    updateTopRegions(analytics);
 
     const countLabel = document.getElementById('editable-table-count');
     if (countLabel) {
@@ -834,7 +845,7 @@
    * Reset to Original subai(1).xlsx Defaults
    */
   function resetToDefault() {
-    localStorage.removeItem('active_sales_dataset_v2');
+    localStorage.removeItem('retail_sales_active_data_v3');
     salesDataset = JSON.parse(JSON.stringify(window.DEFAULT_SALES_RECORDS || []));
     recalculateAndRenderAll();
   }
@@ -843,13 +854,11 @@
    * Setup Event Listeners
    */
   function setupEventListeners() {
-    // Live input events on editable table (fires immediately on typing / spinning number)
     const tableContainer = document.getElementById('editable-table-body');
     if (tableContainer) {
       tableContainer.addEventListener('input', handleCellChange);
       tableContainer.addEventListener('change', handleCellChange);
 
-      // Delete button click delegation
       tableContainer.addEventListener('click', (e) => {
         const delBtn = e.target.closest('.delete-row-btn');
         if (delBtn) {
@@ -859,11 +868,9 @@
       });
     }
 
-    // Add Record Button
     const addBtn = document.getElementById('add-record-btn');
     if (addBtn) addBtn.addEventListener('click', addNewRecord);
 
-    // Reset Data Button
     const resetBtn = document.getElementById('reset-dataset-btn');
     if (resetBtn) resetBtn.addEventListener('click', resetToDefault);
 
@@ -903,17 +910,21 @@
    * Initialize Global Chart Configuration & Dashboard
    */
   function init() {
-    if (typeof Chart !== 'undefined') {
-      Chart.defaults.color = '#94a3b8';
-      Chart.defaults.font.family = "'Inter', -apple-system, sans-serif";
-      Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(18, 16, 38, 0.94)';
-      Chart.defaults.plugins.tooltip.borderColor = 'rgba(217, 70, 239, 0.4)';
-      Chart.defaults.plugins.tooltip.borderWidth = 1;
-      Chart.defaults.plugins.tooltip.padding = 10;
-      Chart.defaults.plugins.tooltip.cornerRadius = 8;
-      Chart.defaults.plugins.tooltip.titleColor = '#ffffff';
-      Chart.defaults.plugins.tooltip.bodyColor = '#e2e8f0';
+    if (typeof Chart === 'undefined') {
+      // Retry in 50ms if Chart.js is still loading asynchronously
+      setTimeout(init, 50);
+      return;
     }
+
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.font.family = "'Inter', -apple-system, sans-serif";
+    Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(18, 16, 38, 0.94)';
+    Chart.defaults.plugins.tooltip.borderColor = 'rgba(217, 70, 239, 0.4)';
+    Chart.defaults.plugins.tooltip.borderWidth = 1;
+    Chart.defaults.plugins.tooltip.padding = 9;
+    Chart.defaults.plugins.tooltip.cornerRadius = 7;
+    Chart.defaults.plugins.tooltip.titleColor = '#ffffff';
+    Chart.defaults.plugins.tooltip.bodyColor = '#e2e8f0';
 
     loadDataset();
     recalculateAndRenderAll();
